@@ -20,11 +20,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 1
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -60,7 +60,6 @@ jobs:
           git -C "$WORK" rm -rf --quiet --ignore-unmatch .
           find "$WORK" -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
           cp -r dist/index.html dist/assets "$WORK"/
-          touch "$WORK/.nojekyll"
           git -C "$WORK" add -A
           if git -C "$WORK" diff --cached --quiet; then
             echo "No changes in the build output."
