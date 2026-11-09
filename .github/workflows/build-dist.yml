@@ -1,0 +1,70 @@
+name: Build dist
+
+# Builds the theme on every push to main/master (or by hand) and appends the output
+# (index.html + assets/) as a new commit on the `dist` branch, reusing the source commit's
+# message. Point CF-Server-Monitor's theme URL, or GitHub Pages, at that branch.
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-dist
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Inject static-hosting settings
+        env:
+          API_BASE: ${{ secrets.API_BASE }}
+          TITLE: ${{ secrets.TITLE }}
+          BACKGROUND_IMAGE: ${{ secrets.BACKGROUND_IMAGE }}
+          CSP_API: ${{ secrets.CSP_API }}
+          CSP_STATIC: ${{ secrets.CSP_STATIC }}
+        run: node scripts/inject-static.mjs
+
+      - name: Commit to the dist branch
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          MESSAGE="$(git log -1 --format=%B "$SOURCE_SHA")"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          WORK="$(mktemp -d)"
+          if git ls-remote --exit-code --heads origin dist >/dev/null 2>&1; then
+            git fetch origin dist --depth=1
+            git worktree add "$WORK" origin/dist
+            git -C "$WORK" checkout -B dist
+          else
+            git worktree add --detach "$WORK"
+            git -C "$WORK" checkout --orphan dist
+          fi
+          git -C "$WORK" rm -rf --quiet --ignore-unmatch .
+          find "$WORK" -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -r dist/index.html dist/assets "$WORK"/
+          touch "$WORK/.nojekyll"
+          git -C "$WORK" add -A
+          if git -C "$WORK" diff --cached --quiet; then
+            echo "No changes in the build output."
+            exit 0
+          fi
+          git -C "$WORK" commit -m "$MESSAGE" -m "Built from ${SOURCE_SHA}"
+          git -C "$WORK" push origin dist

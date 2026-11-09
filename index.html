@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#030407">
+  <title>Server Monitor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Oxanium:wght@500;600;700;800&display=swap">
+  <style>
+    html, body { margin: 0; height: 100%; background: #030407; color: #e6ecf5; }
+    #boot {
+      position: fixed; inset: 0; z-index: 50; display: grid; place-content: center; justify-items: center; gap: 14px;
+      font: 500 13px/1.6 "Microsoft YaHei", "PingFang SC", system-ui, sans-serif; color: #8f9ab0; background: #030407;
+      transition: opacity .5s;
+    }
+    #boot.out { opacity: 0; pointer-events: none; }
+    #boot i { width: 30px; height: 30px; border-radius: 50%; border: 2px solid rgba(120, 220, 255, .16); border-top-color: #3ff0c8; animation: boot-spin 1s linear infinite; }
+    #boot.err i { border-color: #ff5468; animation: none; }
+    #boot.err span { color: #ffb3bc; max-width: 80vw; text-align: center; }
+    @keyframes boot-spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="boot"><i></i><span>Loading…</span></div>
+  <script>
+    (function () {
+      function fail(msg) {
+        var b = document.getElementById('boot');
+        if (!b) return;
+        b.classList.remove('out');
+        b.classList.add('err');
+        b.querySelector('span').textContent = msg;
+      }
+      window.__holoFail = fail;
+      window.addEventListener('error', function (e) {
+        if (window.__holoBooted) return;
+        if (e.target && e.target !== window && (e.target.src || e.target.href)) {
+          fail('Theme asset failed to load: ' + (e.target.src || e.target.href));
+        } else {
+          fail('Theme script error: ' + (e.message || 'unknown'));
+        }
+      }, true);
+    })();
+  </script>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
